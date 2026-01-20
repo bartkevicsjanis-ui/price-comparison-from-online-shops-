@@ -1,12 +1,20 @@
 import requests
 from bs4 import BeautifulSoup
-from scrapers.utils import normalize_name
+from scrapers.utils import normalize_name, strip_diacritics
 
 BASE_URL = "https://www.rimi.lv/e-veikals/lv/meklesana"
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 
 def search_rimi(product_name):
-    r = requests.get(BASE_URL, params={"q": product_name}, headers=HEADERS, timeout=10)
+    clean_query = strip_diacritics(product_name)
+
+    r = requests.get(
+        BASE_URL,
+        params={"q": clean_query},
+        headers=HEADERS,
+        timeout=10
+    )
+
     soup = BeautifulSoup(r.text, "lxml")
 
     products = []
@@ -22,4 +30,5 @@ def search_rimi(product_name):
             "norm_name": normalize_name(name.text),
             "price": float(price.text.replace(",", "."))
         })
+
     return products
