@@ -1,15 +1,20 @@
 import requests
 from bs4 import BeautifulSoup
+from scrapers.utils import normalize_name, strip_diacritics
 
 BASE_URL = "https://barbora.lv/meklet"
-
-HEADERS = {
-    "User-Agent": "Mozilla/5.0"
-}
+HEADERS = {"User-Agent": "Mozilla/5.0"}
 
 def search_barbora(product_name):
-    params = {"q": product_name}
-    r = requests.get(BASE_URL, params=params, headers=HEADERS, timeout=10)
+    clean_query = strip_diacritics(product_name)
+
+    r = requests.get(
+        BASE_URL,
+        params={"q": clean_query},
+        headers=HEADERS,
+        timeout=10
+    )
+
     soup = BeautifulSoup(r.text, "lxml")
 
     products = []
@@ -23,6 +28,7 @@ def search_barbora(product_name):
         products.append({
             "shop": "Barbora",
             "name": name.text.strip(),
+            "norm_name": normalize_name(name.text),
             "price": float(price.text.replace(",", "."))
         })
 
