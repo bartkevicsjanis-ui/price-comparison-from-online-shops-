@@ -1,35 +1,32 @@
-import requests
-from bs4 import BeautifulSoup
+from playwright.sync_api import sync_playwright
 from scrapers.utils import normalize_name, strip_diacritics
 
-BASE_URL = "https://barbora.lv/meklet"
-HEADERS = {"User-Agent": "Mozilla/5.0"}
-
 def search_barbora(product_name):
-    clean_query = strip_diacritics(product_name)
-
-    r = requests.get(
-        BASE_URL,
-        params={"q": clean_query},
-        headers=HEADERS,
-        timeout=10
-    )
-
-    soup = BeautifulSoup(r.text, "lxml")
-
+    query = strip_diacritics(product_name)
     products = []
-    for item in soup.select("div.b-product--wrap"):
-        name = item.select_one("div.b-product--title")
-        price = item.select_one("span.b-product--price-number")
 
-        if not name or not price:
-            continue
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context(
+            locale="lv-LV",
+            geolocation={"latitude": 56.9496, "longitude": 24.1052},
+            permissions=["geolocation"]
+        )
+        page = context.new_page()
 
-        products.append({
-            "shop": "Barbora",
-            "name": name.text.strip(),
-            "norm_name": normalize_name(name.text),
-            "price": float(price.text.replace(",", "."))
-        })
+        page.goto("https://barbora.lv", timeout=30000)
 
-    return products
+        # accept cookies
+        try:
+            page.click("button:has-text('Piekrītu')", timeout=5000)
+        except:
+            pass
+
+        # search
+        page.goto(f"https://barbora.lv/meklet?q={query}", timeout=30000)
+        page.wait_for_selector("div.b-product--wrap", timeout=15000)
+
+        items = page.query_selector_all("div.b-product--wrap")
+
+        for item in items:
+            name = item.query_selector("div.b-_
